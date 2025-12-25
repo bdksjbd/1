@@ -11,20 +11,38 @@ const loadFlagIcon = async (countryCode: string) => {
   try {
     const flags = await import('country-flag-icons/react/3x2');
     const FlagComponent = flags[countryCode as keyof typeof flags];
-    return FlagComponent || null;
+    if (FlagComponent && typeof FlagComponent === 'function') {
+      return FlagComponent;
+    }
+    return null;
   } catch {
     return null;
   }
 };
 
 const CountryFlag = memo(({ countryCode, className = "w-8 h-6" }: { countryCode: string; className?: string }) => {
-  const [FlagComponent, setFlagComponent] = useState<React.ComponentType<{ className?: string }> | null>(null);
+  const [FlagComponent, setFlagComponent] = useState<React.ComponentType<any> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadFlagIcon(countryCode).then(setFlagComponent);
+    setIsLoading(true);
+    loadFlagIcon(countryCode)
+      .then((component) => {
+        if (component) {
+          setFlagComponent(() => component);
+        } else {
+          setFlagComponent(null);
+        }
+      })
+      .catch(() => {
+        setFlagComponent(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [countryCode]);
 
-  if (!FlagComponent) {
+  if (isLoading || !FlagComponent) {
     return (
       <div className={`${className} bg-gradient-to-br from-[#007AFF] to-[#0055b3] rounded flex items-center justify-center`}>
         <Icon name="globe" className="w-4 h-4 text-white" />
@@ -34,7 +52,7 @@ const CountryFlag = memo(({ countryCode, className = "w-8 h-6" }: { countryCode:
 
   return (
     <div className={`${className} rounded overflow-hidden shadow-md border border-white/20`}>
-      <FlagComponent className="w-full h-full object-cover" />
+      <FlagComponent className="w-full h-full object-cover" title={countryCode} />
     </div>
   );
 });
